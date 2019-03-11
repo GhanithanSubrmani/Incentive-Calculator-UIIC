@@ -190,9 +190,13 @@ def process_incentive():
 #    
 #    
     is_motor_PrevYear = premium_rgstr_PrevYear['Department']== 'Motor'
-    premium_rgstr_PrevYear_motor= premium_rgstr_PrevYear[is_motor_PrevYear]
+    premium_rgstr_PrevYear_inter= premium_rgstr_PrevYear[is_motor_PrevYear]
+    is_motor_PrevYear_basic = premium_rgstr_PrevYear_inter['Registration Number'].notnull()
+    premium_rgstr_PrevYear_motor= premium_rgstr_PrevYear_inter[is_motor_PrevYear_basic]
+    
     premium_rgstr_PrevYear_motor['Previous year Policy Count'] = 1
-    premium_rgstr_PrevYear_motor['Collection Date'] = pd.to_datetime(premium_rgstr_PrevYear_motor['Collection Date'],utc=True)
+    if 'Collection Date' in premium_rgstr_PrevYear_motor.columns:
+        premium_rgstr_PrevYear_motor['Collection Date'] = pd.to_datetime(premium_rgstr_PrevYear_motor['Collection Date'],utc=True)
     premium_rgstr_PrevYear_motor['Effect Date'] = pd.to_datetime(premium_rgstr_PrevYear_motor['Effect Date'],utc=True)
     premium_rgstr_PrevYear_motor['Expiry Date'] = pd.to_datetime(premium_rgstr_PrevYear_motor['Expiry Date'],utc=True)
     premium_rgstr_PrevYear_motor['Insured Name'] = premium_rgstr_PrevYear_motor['Insured Name'].str.replace(',','')
@@ -243,8 +247,8 @@ def process_incentive():
     summed_premium_rgstr_prevYear_motor_package.fillna(0)
     summed_premium_rgstr_prevYear_motor_package.to_csv("00_summed_premium_rgstr_prevYear_motor_package.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
     
-
-
+    os.chdir("..")
+    premium_rgstr_PrevYear_motor.to_csv("previous_year_data.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
 
 #    
 #    PRESENT YEAR
@@ -252,13 +256,79 @@ def process_incentive():
 #    
     
     is_motor_PrstYear = premium_rgstr_PrstYear['Department']== 'Motor'
-    premium_rgstr_PrstYear_motor= premium_rgstr_PrstYear[is_motor_PrstYear]
+    premium_rgstr_PrstYear_inter= premium_rgstr_PrstYear[is_motor_PrstYear]
+    is_motor_PrstYear_basic = premium_rgstr_PrstYear_inter['Registration Number'].notnull()
+    premium_rgstr_PrstYear_motor= premium_rgstr_PrstYear_inter[is_motor_PrstYear_basic]
     premium_rgstr_PrstYear_motor['Present year Policy Count'] = 1
-    premium_rgstr_PrstYear_motor['Collection Date'] = pd.to_datetime(premium_rgstr_PrstYear_motor['Collection Date'],utc=True)
+    if 'Collection Date' in premium_rgstr_PrstYear_motor.columns:
+        premium_rgstr_PrstYear_motor['Collection Date'] = pd.to_datetime(premium_rgstr_PrstYear_motor['Collection Date'],utc=True)
     premium_rgstr_PrstYear_motor['Effect Date'] = pd.to_datetime(premium_rgstr_PrstYear_motor['Effect Date'],utc=True)
     premium_rgstr_PrstYear_motor['Expiry Date'] = pd.to_datetime(premium_rgstr_PrstYear_motor['Expiry Date'],utc=True)
     premium_rgstr_PrstYear_motor['Insured Name'] = premium_rgstr_PrstYear_motor['Insured Name'].str.replace(',','')
     premium_rgstr_PrstYear_motor['Agent/Br.Cd Biz Src Cd'] = premium_rgstr_PrstYear_motor['Agent/Br.Cd Biz Src Cd'].str.replace(' -- NA -- NA','')
+#    print(premium_rgstr_PrstYear_motor.info())
+#    premium_rgstr_PrstYear_motor['Transfer'] = 'Newly Acquired'
+#    print(premium_rgstr_PrstYear_motor.info())
+#    To find transfer of policies between agents
+    premium_rgstr_PrevYear_motor_Transfer = premium_rgstr_PrevYear_motor.copy()
+#    premium_rgstr_PrevYear_motor_Transfer.set_index(['Registration Number'], inplace=True)
+    premium_rgstr_PrevYear_motor_Transfer.rename(columns={'Insured Name':'Previous Year Insured Name',
+                                                     'Policy Number':'Previous Year Policy Number',
+                                                     'Agent/Br.Cd Biz Src Cd':'Previous Year Agent'}, inplace=True)
+#    premium_rgstr_PrevYear_motor_Transfer.set_index(['Previous Year Insured Name',
+#                                                                   'Previous Year Policy Number',
+#                                                                   'Registration Number',
+#                                                                   'Previous Year Agent'], inplace = True)
+    premium_rgstr_PrstYear_motor_Transfer = premium_rgstr_PrstYear_motor.copy()
+#    premium_rgstr_PrstYear_motor_Transfer.set_index(['Registration Number'], inplace=True)
+    premium_rgstr_PrstYear_motor_Transfer.rename(columns={'Insured Name':'Present Year Insured Name',
+                                                     'Policy Number':'Present Year Policy Number',
+                                                     'Agent/Br.Cd Biz Src Cd':'Present Year Agent'}, inplace=True)
+    
+    print(premium_rgstr_PrevYear_motor_Transfer.info())
+#    
+    print(premium_rgstr_PrstYear_motor_Transfer.info())
+    
+    Transfer_check= pd.merge(premium_rgstr_PrevYear_motor_Transfer[['Previous Year Insured Name',
+                                                                   'Previous Year Policy Number',
+                                                                   'Registration Number',
+                                                                   'Previous Year Agent']],
+                             premium_rgstr_PrstYear_motor_Transfer[['Present Year Insured Name',
+                                                                   'Present Year Policy Number',
+                                                                   'Registration Number',
+                                                                   'Present Year Agent']],
+                                                                   on = 'Registration Number',
+                                                                   how = 'inner')
+    
+    is_motor_old = Transfer_check['Registration Number']!= 'NEW'
+    Transfer_check= Transfer_check[is_motor_old]
+ 
+#    Transfer_check = Transfer_check[Transfer_check['Registration Number'].str.contains('') == False ]
+    is_motor_basic = Transfer_check['Registration Number'].notnull()
+    Transfer_check= Transfer_check[is_motor_basic]
+    
+    is_not_same_agent = Transfer_check['Previous Year Agent'] != Transfer_check['Present Year Agent']
+    Transfer_check= Transfer_check[is_not_same_agent]
+    
+    Transfer_check['Transfer'] = 'Transfered'
+    Transfer_check.to_csv("Transfered Policies.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')    
+    
+    premium_rgstr_PrstYear_motor = pd.merge(premium_rgstr_PrstYear_motor,
+                                            Transfer_check[['Transfer','Registration Number']],
+                                            on = 'Registration Number',
+                                            how = 'left').fillna('Newly Acquired')
+    
+    
+    
+    premium_rgstr_PrstYear_motor.to_csv("present_year_data_with_transfer_tag.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+    
+    is_transfered = premium_rgstr_PrstYear_motor['Transfer'] == 'Transfered'
+    premium_rgstr_PrstYear_motor.drop(premium_rgstr_PrstYear_motor[is_transfered].index, inplace = True)
+    premium_rgstr_PrstYear_motor.to_csv("present_year_data_without_transfered_policies.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+    
+    
+    print(premium_rgstr_PrstYear_motor.info())
+    
     sublist_column_index=['Agent Name', 'Agent Code', 'Package PrevYear', 'Package PrstYear' , 'Act PrevYear', 'Act PrstYear', 'Growth', 'Eligibilty']
     sublist_agents_prstYear={}
     list_agent_PrstYear= premium_rgstr_PrstYear_motor['Agent/Br.Cd Biz Src Cd'].unique().tolist()
@@ -310,7 +380,7 @@ def process_incentive():
 
 
 #    merged_Act_data= pd.merge(summed_premium_rgstr_prstYear_motor_act,summed_premium_rgstr_prevYear_motor_act,left_index=True, right_index=True)
-    merged_Act_data = summed_premium_rgstr_prstYear_motor_act.combine_first(summed_premium_rgstr_prevYear_motor_act)
+    merged_Act_data = summed_premium_rgstr_prstYear_motor_act.combine_first(summed_premium_rgstr_prevYear_motor_act).fillna(0)
     merged_Act_data['Present year Act Policy Count'] = merged_Act_data['Present year Act Policy Count'].add(0,fill_value=0)
     merged_Act_data['Previous year Act Policy Count'] = merged_Act_data['Previous year Act Policy Count'].add(0,fill_value=0)
     merged_Act_data['Growth for Act'] = merged_Act_data['Present Year Total Act Premium'].sub(merged_Act_data['Previous Year Total Act Premium'],fill_value=0)
@@ -328,7 +398,7 @@ def process_incentive():
 
 
 #    merged_Package_data= pd.merge(summed_premium_rgstr_prstYear_motor_package,summed_premium_rgstr_prevYear_motor_package,left_index=True, right_index=True)
-    merged_Package_data= summed_premium_rgstr_prstYear_motor_package.combine_first(summed_premium_rgstr_prevYear_motor_package)
+    merged_Package_data= summed_premium_rgstr_prstYear_motor_package.combine_first(summed_premium_rgstr_prevYear_motor_package).fillna(0)
     merged_Package_data['Present year Package Policy Count'] = merged_Package_data['Present year Package Policy Count'].add(0,fill_value=0)
     merged_Package_data['Previous year Package Policy Count'] = merged_Package_data['Previous year Package Policy Count'].add(0,fill_value=0)
     merged_Package_data['Growth for Package'] = merged_Package_data['Present Year Total Package Premium'].sub(merged_Package_data['Previous Year Total Package Premium'],fill_value=0)
@@ -344,7 +414,7 @@ def process_incentive():
     merged_Package_data.to_csv("01_merged_package_data.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
     
     os.chdir("..")
-    combined_data= merged_Package_data.combine_first(merged_Act_data)
+    combined_data= merged_Package_data.combine_first(merged_Act_data).fillna(0)
     combined_data['Previous year Policy Count'] = combined_data['Previous year Act Policy Count'].add(combined_data['Previous year Package Policy Count'],fill_value=0)
     combined_data['Present year Policy Count'] = combined_data['Present year Act Policy Count'].add(combined_data['Present year Package Policy Count'],fill_value=0)
     
