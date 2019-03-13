@@ -481,39 +481,94 @@ def process_incentive():
    
 
 #                                                                                                                     
-#    ####  #####   ##   #####  #####    #####  ###### #    #   ##   #####  #####      ####  #####   ##   #####  ##### 
-#   #        #    #  #  #    #   #      #    # #      #    #  #  #  #    # #    #    #        #    #  #  #    #   #   
-#    ####    #   #    # #    #   #      #    # #####  #    # #    # #    # #    #     ####    #   #    # #    #   #   
-#        #   #   ###### #####    #      #####  #      # ## # ###### #####  #    #         #   #   ###### #####    #   
-#   #    #   #   #    # #   #    #      #   #  #      ##  ## #    # #   #  #    #    #    #   #   #    # #   #    #   
-#    ####    #   #    # #    #   #      #    # ###### #    # #    # #    # #####      ####    #   #    # #    #   #   
+#    ####  #####   ##   #####      #####  ###### #    #   ##   #####  #####      ####  #####   ##   #####  ##### 
+#   #        #    #  #  #    #      #    # #      #    #  #  #  #    # #    #    #        #    #  #  #    #   #   
+#    ####    #   #    # #    #      #    # #####  #    # #    # #    # #    #     ####    #   #    # #    #   #   
+#        #   #   ###### #####       #####  #      # ## # ###### #####  #    #         #   #   ###### #####    #   
+#   #    #   #   #    # #   #       #   #  #      ##  ## #    # #   #  #    #    #    #   #   #    # #   #    #   
+#    ####    #   #    # #    #      #    # ###### #    # #    # #    # #####      ####    #   #    # #    #   #   
 #                                                                                                                     
 
     if start_award == True:
         
 
-
-        premium_rgstr_PrevYear_star = premium_rgstr_PrevYear.copy()
+        premium_rgstr_PrevYear['Agent/Br.Cd Biz Src Cd'] = premium_rgstr_PrevYear['Agent/Br.Cd Biz Src Cd'].str.replace(' -- NA -- NA','')
+        premium_rgstr_PrstYear['Agent/Br.Cd Biz Src Cd'] = premium_rgstr_PrstYear['Agent/Br.Cd Biz Src Cd'].str.replace(' -- NA -- NA','')
         
+
+        
+        premium_rgstr_PrevYear_star = premium_rgstr_PrevYear.copy()
         premium_rgstr_PrstYear_star = premium_rgstr_PrstYear.copy()
+        
+        premium_rgstr_PrevYear_star.drop(['Sum Insured','TP Premium','Endorsement Number'], axis = 1, inplace = True)
+        
+        premium_rgstr_PrstYear_star.drop(['Sum Insured','TP Premium','Endorsement Number'], axis = 1, inplace = True)
+        
+        
         
         summed_premium_rgstr_PrevYear_star=premium_rgstr_PrevYear_star.groupby('Agent/Br.Cd Biz Src Cd').sum()
         summed_premium_rgstr_PrevYear_star.fillna(0)
+        summed_premium_rgstr_PrevYear_star.rename(columns={'Total': "Grand Total Previous Year"}, inplace=True)
+        
+#        calculating total department wise
+        departmant_wise_prevYear={}
+        List_of_departments_prevYear = premium_rgstr_PrevYear_star['Department'].unique().tolist()
+    #    messagebox.showinfo("Agent Count", "there are " + str(len(list_agent_PrevYear)) + " unique number of agents in our office.")
+        print("there are " + str(len(List_of_departments_prevYear)) + " number of departments underwritten in our office.")
+        for departments in List_of_departments_prevYear:
+            print (departments)
+            is_department = premium_rgstr_PrevYear_star['Department']== departments
+            departmant_wise_prevYear[departments] = premium_rgstr_PrevYear_star[is_department]
+            departmant_wise_prevYear[departments] = departmant_wise_prevYear[departments].groupby('Agent/Br.Cd Biz Src Cd').sum()
+            departmant_wise_prevYear[departments].fillna(0)
+            departmant_wise_prevYear[departments].rename(columns={'Total': departments + " Total Previous Year"}, inplace=True)
+            summed_premium_rgstr_PrevYear_star = pd.merge(summed_premium_rgstr_PrevYear_star,
+                                                departmant_wise_prevYear[departments][[departments + " Total Previous Year"]],
+                                                on = 'Agent/Br.Cd Biz Src Cd',
+                                                how = 'left').fillna(0)
+
+            
         summed_premium_rgstr_PrevYear_star.to_csv("00_summed_premium_rgstr_prevYear_star.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
 
         summed_premium_rgstr_PrstYear_star=premium_rgstr_PrstYear_star.groupby('Agent/Br.Cd Biz Src Cd').sum()
         summed_premium_rgstr_PrstYear_star.fillna(0)
-        summed_premium_rgstr_PrstYear_star.to_csv("00_summed_premium_rgstr_prstYear_star.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        summed_premium_rgstr_PrstYear_star.rename(columns={'Total': "Grand Total Present Year"}, inplace=True)
+        
+        
+        
+        #        calculating total department wise
+        departmant_wise_prsntYear={}
+        List_of_departments_prsntYear= premium_rgstr_PrevYear_star['Department'].unique().tolist()
+    #    messagebox.showinfo("Agent Count", "there are " + str(len(list_agent_PrevYear)) + " unique number of agents in our office.")
+        print("there are " + str(len(List_of_departments_prsntYear)) + " number of departments underwritten in our office.")
+        for departments in List_of_departments_prsntYear:
+            print (departments)
+            is_department = premium_rgstr_PrstYear_star['Department']== departments
+            departmant_wise_prsntYear[departments] = premium_rgstr_PrstYear_star[is_department]
+            departmant_wise_prsntYear[departments] = departmant_wise_prsntYear[departments].groupby('Agent/Br.Cd Biz Src Cd').sum()
+            departmant_wise_prsntYear[departments].fillna(0)
+            departmant_wise_prsntYear[departments].rename(columns={'Total': departments + " Total Present Year"}, inplace=True)
+            summed_premium_rgstr_PrevYear_star = pd.merge(summed_premium_rgstr_PrevYear_star,
+                                                departmant_wise_prsntYear[departments][[departments + " Total Present Year"]],
+                                                on = 'Agent/Br.Cd Biz Src Cd',
+                                                how = 'left').fillna(0)
 
         
+        summed_premium_rgstr_PrstYear_star.to_csv("00_summed_premium_rgstr_prstYear_star.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        
+        merged_premium_rgstr_star = pd.merge(summed_premium_rgstr_PrstYear_star,
+                                                summed_premium_rgstr_PrevYear_star,
+                                                on = 'Agent/Br.Cd Biz Src Cd',
+                                                how = 'left').fillna(0)
+        merged_premium_rgstr_star.to_csv("00_merged_premium_rgstr_star.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
 
 #                                                                                                         
-#    ####  #####   ##   #####  #####    #####  ###### #    #   ##   #####  #####     ###### #    # #####  
-#   #        #    #  #  #    #   #      #    # #      #    #  #  #  #    # #    #    #      ##   # #    # 
-#    ####    #   #    # #    #   #      #    # #####  #    # #    # #    # #    #    #####  # #  # #    # 
-#        #   #   ###### #####    #      #####  #      # ## # ###### #####  #    #    #      #  # # #    # 
-#   #    #   #   #    # #   #    #      #   #  #      ##  ## #    # #   #  #    #    #      #   ## #    # 
-#    ####    #   #    # #    #   #      #    # ###### #    # #    # #    # #####     ###### #    # #####  
+#    ####  #####   ##   #####      #####  ###### #    #   ##   #####  #####     ###### #    # #####  
+#   #        #    #  #  #    #    #    # #      #    #  #  #  #    # #    #    #      ##   # #    # 
+#    ####    #   #    # #    #    #    # #####  #    # #    # #    # #    #    #####  # #  # #    # 
+#        #   #   ###### #####     #####  #      # ## # ###### #####  #    #    #      #  # # #    # 
+#   #    #   #   #    # #   #     #   #  #      ##  ## #    # #   #  #    #    #      #   ## #    # 
+#    ####    #   #    # #    #    #    # ###### #    # #    # #    # #####     ###### #    # #####  
 #                                                                                                         
 
 
