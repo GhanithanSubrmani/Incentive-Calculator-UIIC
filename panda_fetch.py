@@ -119,15 +119,19 @@ def process_incentive():
     motor = True
     start_award = True
 #   load PrevYear register    
-    premium_rgstr_PrevYear = pd.read_csv(premium_rgstr_PrevYear_filePath,dayfirst=True, parse_dates = True)
+    premium_rgstr_PrevYear_full_data = pd.read_csv(premium_rgstr_PrevYear_filePath,dayfirst=True, parse_dates = True)
     premium_rgstr_PrevYear_csv= csv.DictReader(open(premium_rgstr_PrevYear_filePath))
+    
+    premium_rgstr_PrevYear = premium_rgstr_PrevYear_full_data.filter(['Policy Number','Insured Name','Effect Date','Expiry Date','Department','Sum Insured','Chassis Number','Engine Number','Registration Number','Agent/Br.Cd Biz Src Cd','Policy Source','Total','Endorsement Number','TP Premium'], axis = 1)
     
 #        
 #    
 #   load PrstYear Register
-    premium_rgstr_PrstYear = pd.read_csv(premium_rgstr_PrstYear_filePath,dayfirst=1, parse_dates = True)
+    premium_rgstr_PrstYear_full_data = pd.read_csv(premium_rgstr_PrstYear_filePath,dayfirst=1, parse_dates = True)
     premium_rgstr_PrstYear_csv = csv.DictReader(open(premium_rgstr_PrstYear_filePath))
 
+    premium_rgstr_PrstYear = premium_rgstr_PrstYear_full_data.filter(['Policy Number','Insured Name','Effect Date','Expiry Date','Department','Sum Insured','Chassis Number','Engine Number','Registration Number','Agent/Br.Cd Biz Src Cd','Policy Source','Total','Endorsement Number','TP Premium'], axis = 1)    
+    
 #   #for debugging 
 #    root1= tk.Tk()
 #    root1.title('Premium Register PrevYear')
@@ -432,7 +436,7 @@ def process_incentive():
 #        merging previous year data and present year data of package policies    
         
     #    merged_Package_data= pd.merge(summed_premium_rgstr_prstYear_motor_package,summed_premium_rgstr_prevYear_motor_package,left_index=True, right_index=True)
-        merged_Package_data= summed_premium_rgstr_prstYear_motor_package.combine_first(summed_premium_rgstr_prevYear_motor_package).fillna(0)
+        merged_Package_data = summed_premium_rgstr_prstYear_motor_package.combine_first(summed_premium_rgstr_prevYear_motor_package).fillna(0)
         merged_Package_data['Present year Package Policy Count'] = merged_Package_data['Present year Package Policy Count'].add(0,fill_value=0)
         merged_Package_data['Previous year Package Policy Count'] = merged_Package_data['Previous year Package Policy Count'].add(0,fill_value=0)
         merged_Package_data['Growth for Package'] = merged_Package_data['Present Year Total Package Premium'].sub(merged_Package_data['Previous Year Total Package Premium'],fill_value=0)
@@ -481,7 +485,7 @@ def process_incentive():
    
 
 #                                                                                                                     
-#    ####  #####   ##   #####      #####  ###### #    #   ##   #####  #####      ####  #####   ##   #####  ##### 
+#    ####  #####   ##   #####       #####  ###### #    #   ##   #####  #####      ####  #####   ##   #####  ##### 
 #   #        #    #  #  #    #      #    # #      #    #  #  #  #    # #    #    #        #    #  #  #    #   #   
 #    ####    #   #    # #    #      #    # #####  #    # #    # #    # #    #     ####    #   #    # #    #   #   
 #        #   #   ###### #####       #####  #      # ## # ###### #####  #    #         #   #   ###### #####    #   
@@ -538,7 +542,7 @@ def process_incentive():
         
         #        calculating total department wise
         departmant_wise_prsntYear={}
-        List_of_departments_prsntYear= premium_rgstr_PrevYear_star['Department'].unique().tolist()
+        List_of_departments_prsntYear= premium_rgstr_PrstYear_star['Department'].unique().tolist()
     #    messagebox.showinfo("Agent Count", "there are " + str(len(list_agent_PrevYear)) + " unique number of agents in our office.")
         print("there are " + str(len(List_of_departments_prsntYear)) + " number of departments underwritten in our office.")
         for departments in List_of_departments_prsntYear:
@@ -548,7 +552,7 @@ def process_incentive():
             departmant_wise_prsntYear[departments] = departmant_wise_prsntYear[departments].groupby('Agent/Br.Cd Biz Src Cd').sum()
             departmant_wise_prsntYear[departments].fillna(0)
             departmant_wise_prsntYear[departments].rename(columns={'Total': departments + " Total Present Year"}, inplace=True)
-            summed_premium_rgstr_PrevYear_star = pd.merge(summed_premium_rgstr_PrevYear_star,
+            summed_premium_rgstr_PrstYear_star = pd.merge(summed_premium_rgstr_PrstYear_star,
                                                 departmant_wise_prsntYear[departments][[departments + " Total Present Year"]],
                                                 on = 'Agent/Br.Cd Biz Src Cd',
                                                 how = 'left').fillna(0)
@@ -561,9 +565,45 @@ def process_incentive():
                                                 on = 'Agent/Br.Cd Biz Src Cd',
                                                 how = 'left').fillna(0)
         merged_premium_rgstr_star.to_csv("00_merged_premium_rgstr_star.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        
+        
+        List_of_departments_prsntYear_1 = ['Aviation','Engineering','Fire','Health','Liability','Marine Cargo','Marine Hull','Miscellaneous','Motor','Package','Personal Accident','Property Insurance','Social and Rural','Travel']
+        for departments in List_of_departments_prsntYear_1:
+            if (departments + " Total Present Year") in merged_premium_rgstr_star.columns:
+#                do nothing
+                print(departments + " Total Present Year ok")
+            else:
+                merged_premium_rgstr_star[departments + " Total Present Year"] = 0
+                
+                
+        merged_premium_rgstr_star.drop(['Health Total Previous Year','Motor Total Previous Year','Social and Rural Total Previous Year','Personal Accident Total Previous Year','Marine Cargo Total Previous Year','Liability Total Previous Year','Package Total Previous Year','Fire Total Previous Year','Property Insurance Total Previous Year','Engineering Total Previous Year'], axis = 1, inplace = True)
+
+        merged_premium_rgstr_star['Other Misc'] = merged_premium_rgstr_star['Personal Accident Total Present Year'].add(merged_premium_rgstr_star['Liability Total Present Year'],fill_value=0)
+        merged_premium_rgstr_star['Other Misc'] = merged_premium_rgstr_star['Other Misc'].add(merged_premium_rgstr_star['Package Total Present Year'],fill_value=0)
+        merged_premium_rgstr_star['Other Misc'] = merged_premium_rgstr_star['Other Misc'].add(merged_premium_rgstr_star['Property Insurance Total Present Year'],fill_value=0)
+        
+        merged_premium_rgstr_star.drop(['Personal Accident Total Present Year','Liability Total Present Year','Package Total Present Year','Property Insurance Total Present Year'], axis = 1, inplace = True)
+        
+
+                           
+        
+        merged_premium_rgstr_star['Fire %'] = merged_premium_rgstr_star['Fire Total Present Year'].truediv(merged_premium_rgstr_star['Grand Total Present Year'],fill_value=0) *100
+        merged_premium_rgstr_star['Marine %'] = merged_premium_rgstr_star['Marine Cargo Total Present Year'].truediv(merged_premium_rgstr_star['Grand Total Present Year'],fill_value=0) *100
+        merged_premium_rgstr_star['Health %'] = merged_premium_rgstr_star['Health Total Present Year'].truediv(merged_premium_rgstr_star['Grand Total Present Year'],fill_value=0) *100
+        merged_premium_rgstr_star['Motor %'] = merged_premium_rgstr_star['Motor Total Present Year'].truediv(merged_premium_rgstr_star['Grand Total Present Year'],fill_value=0) *100
+        merged_premium_rgstr_star['Engg %'] = merged_premium_rgstr_star['Engineering Total Present Year'].truediv(merged_premium_rgstr_star['Grand Total Present Year'],fill_value=0) *100
+        merged_premium_rgstr_star['Social %'] = merged_premium_rgstr_star['Social and Rural Total Present Year'].truediv(merged_premium_rgstr_star['Grand Total Present Year'],fill_value=0) *100
+        merged_premium_rgstr_star['Other Misc %'] = merged_premium_rgstr_star['Other Misc'].truediv(merged_premium_rgstr_star['Grand Total Present Year'],fill_value=0) *100
+        
+        merged_Package_data['Growth for Package'] = merged_Package_data['Present Year Total Package Premium'].sub(merged_Package_data['Previous Year Total Package Premium'],fill_value=0)
+                
+        merged_premium_rgstr_star['Growth from previous year'] = merged_premium_rgstr_star['Grand Total Present Year'].sub(merged_premium_rgstr_star['Grand Total Previous Year'],fill_value=0)
+        merged_premium_rgstr_star['Growth from previous year in %'] = merged_premium_rgstr_star['Growth from previous year'].truediv(merged_premium_rgstr_star['Grand Total Previous Year'],fill_value=0) *100
+        
+        merged_premium_rgstr_star.to_csv("star_calculation.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
 
 #                                                                                                         
-#    ####  #####   ##   #####      #####  ###### #    #   ##   #####  #####     ###### #    # #####  
+#    ####  #####   ##   #####     #####  ###### #    #   ##   #####  #####     ###### #    # #####  
 #   #        #    #  #  #    #    #    # #      #    #  #  #  #    # #    #    #      ##   # #    # 
 #    ####    #   #    # #    #    #    # #####  #    # #    # #    # #    #    #####  # #  # #    # 
 #        #   #   ###### #####     #####  #      # ## # ###### #####  #    #    #      #  # # #    # 
