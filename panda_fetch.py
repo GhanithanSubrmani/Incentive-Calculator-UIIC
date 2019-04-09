@@ -16,7 +16,7 @@ from tkinter import messagebox
 
 premium_rgstr_PrevYear_filePath =""
 premium_rgstr_PrstYear_filePath=""
-monthly_commission_bill=""
+monthly_commission_bill_filePath=""
 premium_rgstr_PrevYear = pd.DataFrame
 premium_rgstr_PrstYear = pd.DataFrame
 premium_rgstr_PrevYear_csv = dict()
@@ -210,6 +210,12 @@ def process_incentive():
     #    
     #    
     
+    
+        monthly_commission_bill_full_data = pd.read_csv(monthly_commission_bill_filePath,dayfirst=True, parse_dates = True)
+        monthly_commission_bill_csv= csv.DictReader(open(monthly_commission_bill_filePath))
+    
+        premium_rgstr_PrevYear = monthly_commission_bill_full_data.filter(['Dep No','Policy No','Rate'], axis = 1)
+  
 #        Filtering Motor LOB
         is_motor_PrevYear = premium_rgstr_PrevYear['Department']== 'Motor'
         premium_rgstr_PrevYear_inter= premium_rgstr_PrevYear[is_motor_PrevYear]
