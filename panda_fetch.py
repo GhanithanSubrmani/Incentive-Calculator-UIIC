@@ -16,6 +16,7 @@ from tkinter import messagebox
 
 premium_rgstr_PrevYear_filePath =""
 premium_rgstr_PrstYear_filePath=""
+monthly_commission_bill=""
 premium_rgstr_PrevYear = pd.DataFrame
 premium_rgstr_PrstYear = pd.DataFrame
 premium_rgstr_PrevYear_csv = dict()
@@ -37,6 +38,11 @@ def csv_file_import_PrstYear():
     premium_rgstr_PrstYear_filePath = filedialog.askopenfilename()
     return
 
+
+def csv_file_import_MonthCom():
+    global monthly_commission_bill
+    monthly_commission_bill = filedialog.askopenfilename()
+    return
 
 
 def calcuate_incentive_Act(x):
@@ -677,13 +683,17 @@ helpmenu.add_command(label='About')
 
 
 
-btn_import_PrevYear_premium_rgstr=tk.Button(root,text="Select PrevYear Register", command = csv_file_import_PrevYear)
+btn_import_PrevYear_premium_rgstr = tk.Button(root,text="Select PrevYear Register", command = csv_file_import_PrevYear)
 #btn_import_PrevYear_premium_rgstr.pack()
 btn_import_PrevYear_premium_rgstr.place(x=20, y=80)
 
-btn_import_PrevYear_premium_rgstr=tk.Button(root,text="Select PrstYear Register", command = csv_file_import_PrstYear)
+btn_import_PrstYear_premium_rgstr = tk.Button(root,text="Select PrstYear Register", command = csv_file_import_PrstYear)
 #btn_import_PrevYear_premium_rgstr.pack()
-btn_import_PrevYear_premium_rgstr.place(x=20, y=120)
+btn_import_PrstYear_premium_rgstr.place(x=20, y=120)
+
+btn_import_Month_Com = tk.Button(root,text="Monthly Commission Bill", command = csv_file_import_MonthCom)
+#btn_import_PrevYear_premium_rgstr.pack()
+btn_import_Month_Com.place(x=20, y=160)
 
 btn_print_csv=tk.Button(root,text="Process CSV", command = process_incentive)
 #btn_import_PrevYear_premium_rgstr.pack()
