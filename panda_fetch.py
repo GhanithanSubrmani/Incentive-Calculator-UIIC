@@ -40,8 +40,8 @@ def csv_file_import_PrstYear():
 
 
 def csv_file_import_MonthCom():
-    global monthly_commission_bill
-    monthly_commission_bill = filedialog.askopenfilename()
+    global monthly_commission_bill_filePath
+    monthly_commission_bill_filePath = filedialog.askopenfilename()
     return
 
 
@@ -213,16 +213,18 @@ def process_incentive():
     
         monthly_commission_bill_full_data = pd.read_csv(monthly_commission_bill_filePath,dayfirst=True, parse_dates = True)
         monthly_commission_bill_csv= csv.DictReader(open(monthly_commission_bill_filePath))
-    
-        premium_rgstr_PrevYear = monthly_commission_bill_full_data.filter(['Dep No','Policy No','Rate'], axis = 1)
-  
+        monthly_commission_bill = monthly_commission_bill_full_data.filter(['Dep No','Policy No','Rate','Name'], axis = 1)
+        
+        
 #        Filtering Motor LOB
         is_motor_PrevYear = premium_rgstr_PrevYear['Department']== 'Motor'
         premium_rgstr_PrevYear_inter= premium_rgstr_PrevYear[is_motor_PrevYear]
 #        remove polcies other than A, B , C and D types
         is_motor_PrevYear_basic = premium_rgstr_PrevYear_inter['Registration Number'].notnull()
         premium_rgstr_PrevYear_motor= premium_rgstr_PrevYear_inter[is_motor_PrevYear_basic]
+        premium_rgstr_PrevYear_motor.drop(['Endorsement Number'], axis = 1, inplace = True)
         
+
 #        introduce column to count polcies for each agent by assigning a count value to every policy 
         premium_rgstr_PrevYear_motor['Previous year Policy Count'] = 1
 #        condition the date datatypes to UTC format
@@ -410,18 +412,51 @@ def process_incentive():
         summed_premium_rgstr_prstYear_motor.to_csv("00_summed_premium_rgstr_prstYear_motor.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
 
 #       filtering ACT policies         
-        is_package_act_prstYear = premium_rgstr_PrstYear_motor['TP Premium']== premium_rgstr_PrstYear_motor['Total']
-        premium_rgstr_prstYear_motor_act = premium_rgstr_PrstYear_motor[is_package_act_prstYear]
+        
+        is_motor_dept_32 = monthly_commission_bill['Dep No']== '32 - Motor TP'
+        monthly_commission_bill_TP= monthly_commission_bill[is_motor_dept_32]
+        monthly_commission_bill_TP.rename(columns={'Policy No':'Policy Number','Name':'Agent Name'}, inplace=True)
+        monthly_commission_bill_TP.drop_duplicates(subset=None, keep='first', inplace=True)
+        monthly_commission_bill_TP.to_csv("00_monthly_commission_bill_TP.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        premium_rgstr_prstYear_motor_com_merge_TP = pd.merge(premium_rgstr_PrstYear_motor,
+                                                monthly_commission_bill_TP,
+                                                on = 'Policy Number',
+                                                how = 'left').fillna(0)
+        is_motor_TP = premium_rgstr_prstYear_motor_com_merge_TP['Rate']== 2.5
+        premium_rgstr_prstYear_motor_act = premium_rgstr_prstYear_motor_com_merge_TP[is_motor_TP]
+        premium_rgstr_prstYear_motor_com_merge_TP.to_csv("00_premium_rgstr_prstYear_motor_com_merge_TP.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        premium_rgstr_prstYear_motor_act.drop(['Rate','Dep No'], axis = 1, inplace = True)
+        premium_rgstr_prstYear_motor_act.to_csv("00_premium_rgstr_prstYear_motor_act.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+#        old method
+#        is_package_act_prstYear = premium_rgstr_PrstYear_motor['TP Premium']== premium_rgstr_PrstYear_motor['Total']
+#        premium_rgstr_prstYear_motor_act = premium_rgstr_PrstYear_motor[is_package_act_prstYear]
         premium_rgstr_prstYear_motor_act.rename(columns={'Total':'Present Year Total Act Premium', 'TP Premium':'Present Year Total Act TP Premium', 'Present year Policy Count': 'Present year Act Policy Count'}, inplace=True)
-        summed_premium_rgstr_prstYear_motor_act = premium_rgstr_prstYear_motor_act.groupby('Agent/Br.Cd Biz Src Cd').sum()
+        summed_premium_rgstr_prstYear_motor_act = premium_rgstr_prstYear_motor_act.groupby(['Agent/Br.Cd Biz Src Cd','Agent Name']).sum()
         summed_premium_rgstr_prstYear_motor_act.fillna(0)
         summed_premium_rgstr_prstYear_motor_act.to_csv("00_summed_premium_rgstr_prstYear_motor_act.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
         
 #       filtering package policies         
-        is_package_Package_prstYear = premium_rgstr_PrstYear_motor['TP Premium']!= premium_rgstr_PrstYear_motor['Total']
-        premium_rgstr_prstYear_motor_package = premium_rgstr_PrstYear_motor[is_package_Package_prstYear]
+        is_motor_dept_31 = monthly_commission_bill['Dep No']== '31 - Motor'
+        monthly_commission_bill_PACK= monthly_commission_bill[is_motor_dept_31]
+        monthly_commission_bill_PACK['Package'] = 1
+        monthly_commission_bill_PACK.rename(columns={'Policy No':'Policy Number','Name':'Agent Name'}, inplace=True)
+        monthly_commission_bill_PACK.drop_duplicates(subset=None, keep='first', inplace=True)
+        monthly_commission_bill_PACK.to_csv("00_monthly_commission_bill_PACK.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        premium_rgstr_prstYear_motor_com_merge_PACK = pd.merge(premium_rgstr_PrstYear_motor,
+                                                monthly_commission_bill_PACK,
+                                                on = 'Policy Number',
+                                                how = 'left').fillna(0)
+        is_motor_PACK = premium_rgstr_prstYear_motor_com_merge_PACK['Package']== 1
+        premium_rgstr_prstYear_motor_package = premium_rgstr_prstYear_motor_com_merge_PACK[is_motor_PACK]
+        premium_rgstr_prstYear_motor_com_merge_PACK.to_csv("00_premium_rgstr_prstYear_motor_com_merge_PACK.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        premium_rgstr_prstYear_motor_package.drop(['Rate','Dep No','Package'], axis = 1, inplace = True)
+        premium_rgstr_prstYear_motor_package.to_csv("00_premium_rgstr_prstYear_motor_package.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
+        
+#        old method
+#        is_package_Package_prstYear = premium_rgstr_PrstYear_motor['TP Premium']!= premium_rgstr_PrstYear_motor['Total']
+#        premium_rgstr_prstYear_motor_package = premium_rgstr_PrstYear_motor[is_package_Package_prstYear]
         premium_rgstr_prstYear_motor_package.rename(columns={'Total':'Present Year Total Package Premium', 'TP Premium':'Present Year Total Package TP Premium', 'Present year Policy Count': 'Present year Package Policy Count'}, inplace=True)
-        summed_premium_rgstr_prstYear_motor_package = premium_rgstr_prstYear_motor_package.groupby('Agent/Br.Cd Biz Src Cd').sum()
+        summed_premium_rgstr_prstYear_motor_package = premium_rgstr_prstYear_motor_package.groupby(['Agent/Br.Cd Biz Src Cd','Agent Name']).sum()
         summed_premium_rgstr_prstYear_motor_package.fillna(0)
         summed_premium_rgstr_prstYear_motor_package.to_csv("00_summed_premium_rgstr_prstYear_motor_package.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
     
@@ -703,7 +738,7 @@ btn_import_Month_Com.place(x=20, y=160)
 
 btn_print_csv=tk.Button(root,text="Process CSV", command = process_incentive)
 #btn_import_PrevYear_premium_rgstr.pack()
-btn_print_csv.place(x=20, y=160)
+btn_print_csv.place(x=20, y=200)
 
 root.mainloop()
 root.withdraw()
