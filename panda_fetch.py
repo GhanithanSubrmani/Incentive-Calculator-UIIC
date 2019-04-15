@@ -124,6 +124,7 @@ def process_incentive():
     premium_rgstr_PrstYear = pd.DataFrame
     motor = True
     start_award = True
+    Remove_transfered_policy = False
 #   load PrevYear register    
     premium_rgstr_PrevYear_full_data = pd.read_csv(premium_rgstr_PrevYear_filePath,dayfirst=True, parse_dates = True)
     premium_rgstr_PrevYear_csv= csv.DictReader(open(premium_rgstr_PrevYear_filePath))
@@ -314,6 +315,7 @@ def process_incentive():
     #    print(premium_rgstr_PrstYear_motor.info())
     #    To find transfer of policies between agents
     
+    
 #        filtering transfered policies between agents
         premium_rgstr_PrevYear_motor_Transfer = premium_rgstr_PrevYear_motor.copy()
     #    premium_rgstr_PrevYear_motor_Transfer.set_index(['Registration Number'], inplace=True)
@@ -370,7 +372,9 @@ def process_incentive():
         premium_rgstr_PrstYear_motor.to_csv("present_year_data_with_transfer_tag.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
         
         is_transfered = premium_rgstr_PrstYear_motor['Transfer'] == 'Transfered'
-        premium_rgstr_PrstYear_motor.drop(premium_rgstr_PrstYear_motor[is_transfered].index, inplace = True)
+        if Remove_transfered_policy == True:
+            premium_rgstr_PrstYear_motor.drop(premium_rgstr_PrstYear_motor[is_transfered].index, inplace = True)
+            
         premium_rgstr_PrstYear_motor.to_csv("present_year_data_without_transfered_policies.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
         
         
@@ -517,6 +521,7 @@ def process_incentive():
         combined_data['Total Incentive'] = combined_data['Incentive for Package'] + combined_data['Incentive for Act']
         combined_data['TDS'] = combined_data['Total Incentive'] * 5 / 100
         combined_data['Total Incentive to be Paid'] = combined_data['Total Incentive'] - combined_data['TDS']
+        combined_data.drop(['Endorsement Number'], axis = 1, inplace = True)
         combined_data.to_csv("00_combined_incentive_data.csv", sep=',',mode='w', quoting=csv.QUOTE_NONE, encoding='utf-8',escapechar='\\', date_format='%d/%m/%y')
         
 
